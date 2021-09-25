@@ -1,0 +1,67 @@
+pipeline {
+  agent any
+
+  triggers {
+    gitlab(
+      triggerOnPush: false,
+      triggerOnMergeRequest: false,
+      triggerOpenMergeRequestOnPush: "source",
+      triggerOnNoteRequest: true,
+      noteRegex: ".*performance.*",
+      skipWorkInProgressMergeRequest: true,
+      ciSkip: true,
+      setBuildDescription: true,
+      addNoteOnMergeRequest: true,
+      addCiMessage: true,
+      addVoteOnMergeRequest: true,
+      acceptMergeRequestOnSuccess: false
+    )
+  }
+
+  options {
+    skipDefaultCheckout()
+    gitlabConnection('github')
+  }
+
+  environment {
+    GITLAB_REPO = "https://github.com"
+    GITLAB_ORG = "renyuanjun"
+    GITLAB_REPO = "test"
+  }
+  
+  stages {
+    stage("GetMergeRequestInfo") {
+      steps {
+        echo "gitlabMergeRequestId: ${env.gitlabMergeRequestId}"
+        echo "gitlabSourceBranch: ${env.gitlabSourceBranch}"
+        echo "gitlabTargetBranch: ${env.gitlabTargetBranch}"
+        echo "gitlabMergeRequestLastCommit: ${env.gitlabMergeRequestLastCommit}"
+        echo "WORKSPACE: ${env.WORKSPACE}"
+      }
+    }
+
+    stage("UpdateTargetBranch") {
+      echo "Update Target Branch"
+
+      script {
+        def scmVars = checkout([
+          $class: "GitSCM",
+          branches: [[name: "origin/${gitlabTargetBranch}"]]
+          doGenerateSubmoduleConfigurations: false,
+          submoduleCfg: []
+          extensions: [
+            [$class: 'RelativeTargetDirectory', relativeTargetDir: "../llvm_project/${GITLAB_REPO}"]
+            [$class: 'CleanBeforeCheckout']
+          ]
+
+        ])
+      }
+    }
+  }
+
+  post {
+    success {
+      // TODO
+    }
+  }
+}
